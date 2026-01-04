@@ -4,50 +4,83 @@ import pandas as pd
 from datetime import datetime
 
 # 1. AUTHENTICATION
-# This must match your secrets setup
 @st.cache_resource
 def get_gspread_client():
-    # Authenticates using Service Account JSON from Streamlit Secrets
     info = st.secrets["gcp_service_account"]
     client = gspread.service_account_from_dict(info)
     return client
 
 # 2. DATA WRITE FUNCTION
-def log_test_data():
+def log_activity_data(entry_data):
     try:
         client = get_gspread_client()
-
-        # Use the key/ID of your sheet (can be ID or Name)
-        sheet_name = "Streamlit Test Log" 
+        sheet_name = "Daily Activity Log" 
 
         # Open or create the sheet
         try:
-                sheet = client.open(sheet_name).sheet1
+            spreadsheet = client.open(sheet_name)
+            sheet = spreadsheet.sheet1
         except gspread.SpreadsheetNotFound:
-                
-                # Retrieve the FOLDER_ID from secrets
-                folder_id = st.secrets["FOLDER_ID"]
-                
-                # FIX: Create the spreadsheet explicitly inside the folder
-                spreadsheet = client.create(sheet_name, folder_id=folder_id, share_folder=True)
-                spreadsheet.share(st.secrets["gcp_service_account"]["client_email"], role='writer', type='user')
-                sheet = spreadsheet.sheet1
-                sheet.append_row(["Timestamp", "Test Value"])
+            folder_id = st.secrets["FOLDER_ID"]
+            spreadsheet = client.create(sheet_name, folder_id=folder_id)
+            # Share with your service account email to ensure edit access
+            spreadsheet.share(st.secrets["gcp_service_account"]["client_email"], role='writer', type='user')
+            sheet = spreadsheet.sheet1
+            
+            # Create Headers based on your fields
+            headers = ["Date", "Satisfaction", "Neuralgia", "Exercise_Type", "Exercise_Mins", "Insights"]
+            sheet.append_row(headers)
 
-        # Log the data
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sheet.append_row([timestamp, "Success!"])
-
-        st.success(f"Successfully logged data to Google Sheet: {timestamp}")
+        # Log the data row
+        sheet.append_row(entry_data)
+        st.success(f"Successfully saved entry for {entry_data[0]}!")
 
     except Exception as e:
         st.error("Google Sheets Connection Error")
         st.exception(e)
 
-# 3. STREAMLIT UI
-st.title("Google Drive Test App")
+# 3. STREAMLIT UI - INPUT TEMPLATE
+st.title("☀️ Daily Activity Log")
+st.write("Record your health metrics and exercise for today.")
 
-if st.button("Log Test Data"):
-    log_test_data()
+with st.form("activity_form", clear_on_submit=True):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        date_val = st.date_input("Date", datetime.now())
+        satisfaction = st.slider("Satisfaction Rating (1-5)", 1, 5, 3)
+        neuralgia = st.slider("Neuralgia/Pain Rating (1-5)", 1, 5, 1)
+        
+    with col2:
+        ex_type = st.selectbox("Exercise Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"])
+        ex_mins = st.number_input("Duration (Minutes)", min_value=0.0, step=5.0)
+    
+    insights = st.text_area("Daily Insights & Health Notes")
+    
+    submit = st.form_submit_button("Save to Google Sheet")
 
-st.caption("If this works, you'll see a new sheet named 'Streamlit Test Log' in your Drive.")
+if submit:
+    # Prepare the data row
+    new_entry = [
+        date_val.strftime("%Y-%m-%d"),
+        satisfaction,
+        neuralgia,
+        ex_type,
+        ex_mins,
+        insights
+    ]
+    log_activity_data(new_entry)
+
+# --- 4. FUTURE STEP: VIEW DATA ---
+st.divider()
+if st.checkbox("Show recent log entries"):
+    try:
+        client = get_gspread_client()
+        sheet = client.open("Daily Activity Log").sheet1
+        data = sheet.get_all_records()
+        if data:
+            st.dataframe(pd.DataFrame(data).tail(10))
+        else:
+            st.info("The sheet is currently empty.")
+    except:
+        st.info("No data found yet. Save your first entry to see the log.")
