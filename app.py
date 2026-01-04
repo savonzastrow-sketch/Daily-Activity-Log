@@ -24,7 +24,7 @@ def log_activity_data(entry_data):
             folder_id = st.secrets["FOLDER_ID"]
             spreadsheet = client.create(sheet_name, folder_id=folder_id)
             # Share with your service account email to ensure edit access
-            spreadsheet.share(st.secrets["gcp_service_account"]["client_email"], role='writer', type='user')
+            spreadsheet.share(st.secrets["gcp_service_account"]["client_email"], role='writer', perm_type='user')
             sheet = spreadsheet.sheet1
             
             # Create Headers based on your fields
