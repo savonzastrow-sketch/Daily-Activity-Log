@@ -2,6 +2,7 @@ import streamlit as st
 import gspread
 import pandas as pd
 import pytz
+import altair as alt
 from datetime import datetime
 
 # 1. AUTHENTICATION
@@ -29,7 +30,7 @@ def log_activity_data(entry_data):
             sheet = spreadsheet.sheet1
             
             # Create Headers based on your fields
-            headers = ["Date", "Satisfaction", "Neuralgia", "Exercise_Type", "Exercise_Mins", "Insights"]
+            headers = ["Date", "Satisfaction", "Neuralgia", "Ex1_Type", "Ex1_Mins", "Ex2_Type", "Ex2_Mins", "Insights", "Timestamp"]
             sheet.append_row(headers)
 
         # Log the data row
