@@ -138,25 +138,18 @@ try:
                 x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
             )
 
-            # Bars with Fixed Colors
-            bars = chart_base.mark_bar(opacity=0.7).encode(
+            # 1. Bars (Stacked Exercise)
+            bars = alt.Chart(df_plot).mark_bar(opacity=0.7).encode(
                 y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
                 color=alt.Color('Type:N', 
                     title='Activity', 
-                    scale=alt.Scale(
-                        domain=list(activity_colors.keys()), 
-                        range=list(activity_colors.values())
-                    )
+                    scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values()))
                 ),
                 tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
             )
 
-            # Line Chart (Health Metrics) using the SAME numeric X-axis
-            line_base = alt.Chart(df_filtered).encode(
-                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
-            )
-            
-            lines = line_base.transform_fold(
+            # 2. Lines (Health Metrics)
+            lines = alt.Chart(df_filtered).transform_fold(
                 ['Satisfaction', 'Neuralgia'], 
                 as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
@@ -164,7 +157,11 @@ try:
                 color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
             )
 
-            final_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=400)
+            # 3. Combine with a Shared X-Axis
+            final_chart = alt.layer(bars, lines).encode(
+                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
+            ).resolve_scale(y='independent').properties(height=400)
+
             st.altair_chart(final_chart, use_container_width=True)
 
             with st.expander("View Monthly Data Table"):
