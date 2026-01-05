@@ -55,7 +55,7 @@ with st.form("activity_form", clear_on_submit=True):
         
     with col2:
         st.subheader("Exercise 1")
-        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex1_type")
+        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex1_type")
         ex_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
         
         st.divider()
@@ -126,7 +126,7 @@ try:
 
             # 1. Fixed Activity Colors
             activity_colors = {
-                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Other": "#BAB0AC"
+                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Other": "#BAB0AC"
             }
 
             # --- CHART 1: EXERCISE (Stacked Bar) ---
