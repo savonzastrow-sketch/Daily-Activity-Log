@@ -123,16 +123,16 @@ try:
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
-            # Base X-axis
-            base = alt.Chart(df_plot).encode(
+            # Base Chart
+            chart_base = alt.Chart(df_plot).encode(
                 x=alt.X('day(Date):O', title=f'Days in {selected_month_name}')
             )
 
-            # Bar Chart (Exercise)
-            bars = base.mark_bar(opacity=0.7).encode(
-                y=alt.Y('sum(Mins):Q', title='Exercise Minutes'),
+            # Bars
+            bars = chart_base.mark_bar(opacity=0.7).encode(
+                y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
                 color=alt.Color('Type:N', title='Activity', scale=alt.Scale(scheme='tableau10')),
-                tooltip=['Date', 'Type', 'sum(Mins)']
+                tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
             )
 
             # Line Chart (Health Metrics)
