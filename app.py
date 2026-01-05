@@ -144,7 +144,7 @@ try:
             st.altair_chart(exercise_chart, use_container_width=True)
 
             # --- CHART 2: HEALTH METRICS (Lines) ---
-            st.write("### Satisfaction & Pain Levels")
+            st.write("### Satisfaction & Neuralgia Levels")
             health_chart = alt.Chart(df_filtered).transform_fold(
                 ['Satisfaction', 'Neuralgia'], 
                 as_=['Metric', 'Value']
