@@ -126,8 +126,7 @@ try:
 
             # Base Chart using date number (1, 2, 3...) to ensure correct sorting
             chart_base = alt.Chart(df_plot).encode(
-                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
-            )
+                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}', sort=alt.EncodingSortField(field='Date', order='ascending'))
 
             # Bars
             bars = chart_base.mark_bar(opacity=0.7).encode(
@@ -137,7 +136,7 @@ try:
             )
 
             # Line Chart (Health Metrics)
-            line_base = alt.Chart(df_filtered).encode(x='date(Date):O')
+            line_base = alt.Chart(df_filtered).encode(x=alt.X('day(Date):O', sort=alt.EncodingSortField(field='Date', order='ascending')))
             lines = line_base.transform_fold(
                 ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
