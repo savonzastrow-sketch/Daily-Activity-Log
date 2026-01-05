@@ -68,7 +68,7 @@ with st.form("activity_form", clear_on_submit=True):
     submit = st.form_submit_button("Save to Google Sheet")
 
 if submit:
-    # 1. Get the current time in EST
+    # 1. Get current time in EST
     est = pytz.timezone('US/Eastern')
     timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
     
@@ -90,7 +90,6 @@ if submit:
 st.divider()
 st.subheader("Visual Analysis")
 
-# Month Selector
 months = ["January", "February", "March", "April", "May", "June", 
           "July", "August", "September", "October", "November", "December"]
 current_month_idx = datetime.now().month - 1
@@ -99,36 +98,44 @@ selected_month_name = st.selectbox("Select Month to Review", months, index=curre
 try:
     client = get_gspread_client()
     sheet = client.open("Daily Activity Log").sheet1
-    raw_data = sheet.get_all_records()
-    df = pd.DataFrame(raw_data)
-
-    if not df.empty:
-        # Convert Date column and filter by selected month
+    all_values = sheet.get_all_values()
+    
+    if len(all_values) > 1:
+        # Load into DataFrame using the first row as headers
+        df = pd.DataFrame(all_values[1:], columns=all_values[0])
+        
+        # Convert types so the chart can read them
         df['Date'] = pd.to_datetime(df['Date'])
+        df['Ex1_Mins'] = pd.to_numeric(df['Ex1_Mins'], errors='coerce').fillna(0)
+        df['Ex2_Mins'] = pd.to_numeric(df['Ex2_Mins'], errors='coerce').fillna(0)
+        df['Satisfaction'] = pd.to_numeric(df['Satisfaction'], errors='coerce').fillna(0)
+        df['Neuralgia'] = pd.to_numeric(df['Neuralgia'], errors='coerce').fillna(0)
+
+        # Filter for the selected month
         df_filtered = df[df['Date'].dt.month_name() == selected_month_name].copy()
 
         if df_filtered.empty:
             st.info(f"No data logged for {selected_month_name} yet.")
         else:
-            # Prepare data for stacked bars
+            # Prepare data for stacked bars by combining Ex1 and Ex2
             ex1 = df_filtered[['Date', 'Ex1_Type', 'Ex1_Mins']].rename(columns={'Ex1_Type': 'Type', 'Ex1_Mins': 'Mins'})
             ex2 = df_filtered[['Date', 'Ex2_Type', 'Ex2_Mins']].rename(columns={'Ex2_Type': 'Type', 'Ex2_Mins': 'Mins'})
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
-            # Dual-Axis Chart
+            # Base X-axis
             base = alt.Chart(df_plot).encode(
                 x=alt.X('day(Date):O', title=f'Days in {selected_month_name}')
             )
 
-            # Bars (Stacked Exercise)
+            # Bar Chart (Exercise)
             bars = base.mark_bar(opacity=0.7).encode(
                 y=alt.Y('sum(Mins):Q', title='Exercise Minutes'),
                 color=alt.Color('Type:N', title='Activity', scale=alt.Scale(scheme='tableau10')),
                 tooltip=['Date', 'Type', 'sum(Mins)']
             )
 
-            # Lines (Health Metrics)
+            # Line Chart (Health Metrics)
             line_base = alt.Chart(df_filtered).encode(x='day(Date):O')
             lines = line_base.transform_fold(
                 ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
@@ -140,9 +147,11 @@ try:
             final_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=400)
             st.altair_chart(final_chart, use_container_width=True)
 
-            # Option to see raw data
             with st.expander("View Monthly Data Table"):
                 st.dataframe(df_filtered.sort_values('Date', ascending=False))
+    else:
+        st.info("Log some data to see the chart!")
 
 except Exception as e:
-    st.info("Log some data to see the chart!")
+    st.error("Error loading chart data.")
+    st.exception(e)
