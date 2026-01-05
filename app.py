@@ -151,11 +151,11 @@ try:
             ).mark_line(point=True).encode(
                 x=alt.X('date(Date):O', title=f'Day of {selected_month_name}'),
                 y=alt.Y('Value:Q', title='Rating (1-5)', scale=alt.Scale(domain=[1, 5])),
-                color=alt.Color('Metric:N', 
+                color=alt.Color('Metric:N',  # <--- Added :N here to fix the ValueError
                     title='Metric',
                     scale=alt.Scale(range=['#636EFA', '#EF553B'])
                 ),
-                tooltip=['Date', 'Metric', 'Value']
+                tooltip=['Date', 'Metric:N', 'Value:Q']
             ).properties(height=250)
 
             st.altair_chart(health_chart, use_container_width=True)
