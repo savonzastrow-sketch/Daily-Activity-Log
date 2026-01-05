@@ -55,7 +55,7 @@ with st.form("activity_form", clear_on_submit=True):
         
     with col2:
         st.subheader("Exercise 1")
-        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex1_type")
+        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex1_type")
         ex_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
         
         st.divider()
@@ -124,29 +124,41 @@ try:
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
-            # Base Chart
-            chart_base = alt.Chart(df_plot).encode(
-                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}')
-            )
+            # 1. Fixed Activity Colors
+            activity_colors = {
+                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Other": "#BAB0AC"
+            }
 
-            # Bars
-            bars = chart_base.mark_bar(opacity=0.7).encode(
-                y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
-                color=alt.Color('Type:N', title='Activity', scale=alt.Scale(scheme='tableau10')),
+            # --- CHART 1: EXERCISE (Stacked Bar) ---
+            st.write("### Exercise Minutes")
+            exercise_chart = alt.Chart(df_plot).mark_bar(opacity=0.8).encode(
+                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}'),
+                y=alt.Y('Mins:Q', aggregate='sum', title='Minutes'),
+                color=alt.Color('Type:N', 
+                    title='Activity', 
+                    scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values()))
+                ),
                 tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
-            )
+            ).properties(height=300)
+            
+            st.altair_chart(exercise_chart, use_container_width=True)
 
-            # Line Chart (Health Metrics)
-            line_base = alt.Chart(df_filtered).encode(x='day(Date):O')
-            lines = line_base.transform_fold(
-                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
+            # --- CHART 2: HEALTH METRICS (Lines) ---
+            st.write("### Satisfaction & Neuralgia Levels")
+            health_chart = alt.Chart(df_filtered).transform_fold(
+                ['Satisfaction', 'Neuralgia'], 
+                as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
+                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}'),
                 y=alt.Y('Value:Q', title='Rating (1-5)', scale=alt.Scale(domain=[1, 5])),
-                color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
-            )
+                color=alt.Color('Metric:N',  # <--- Added :N here to fix the ValueError
+                    title='Metric',
+                    scale=alt.Scale(range=['#636EFA', '#EF553B'])
+                ),
+                tooltip=['Date', 'Metric:N', 'Value:Q']
+            ).properties(height=250)
 
-            final_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=400)
-            st.altair_chart(final_chart, use_container_width=True)
+            st.altair_chart(health_chart, use_container_width=True)
 
             with st.expander("View Monthly Data Table"):
                 st.dataframe(df_filtered.sort_values('Date', ascending=False))
