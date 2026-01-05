@@ -1,6 +1,7 @@
 import streamlit as st
 import gspread
 import pandas as pd
+import pytz
 from datetime import datetime
 
 # 1. AUTHENTICATION
@@ -52,22 +53,37 @@ with st.form("activity_form", clear_on_submit=True):
         neuralgia = st.slider("Neuralgia/Pain Rating (1-5)", 1, 5, 1)
         
     with col2:
-        ex_type = st.selectbox("Exercise Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"])
-        ex_mins = st.number_input("Duration (Minutes)", min_value=0.0, step=5.0)
+        st.subheader("Exercise 1")
+        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex1_type")
+        ex_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
+        
+        st.divider()
+        
+        st.subheader("Exercise 2")
+        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex2_type", index=0)
+        ex2_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
     
     insights = st.text_area("Daily Insights & Health Notes")
     
     submit = st.form_submit_button("Save to Google Sheet")
 
 if submit:
-    # Prepare the data row
+    # 1. Get the current time in EST
+    est = pytz.timezone('US/Eastern')
+    timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
+    
+    # 2. Prepare the data row
+    # We keep date_val as the "Journal Date" and add the timestamp at the end
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
         neuralgia,
         ex_type,
         ex_mins,
-        insights
+        ex2_type,
+        ex2_mins,
+        insights,
+        timestamp_est  # This ensures we know exactly when it was saved in EST
     ]
     log_activity_data(new_entry)
 
