@@ -72,8 +72,7 @@ if submit:
     est = pytz.timezone('US/Eastern')
     timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
     
-    # 2. Prepare the data row
-    # We keep date_val as the "Journal Date" and add the timestamp at the end
+    # 2. Prepare the data row (9 columns)
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
@@ -83,20 +82,67 @@ if submit:
         ex2_type,
         ex2_mins,
         insights,
-        timestamp_est  # This ensures we know exactly when it was saved in EST
+        timestamp_est
     ]
     log_activity_data(new_entry)
 
-# --- 4. FUTURE STEP: VIEW DATA ---
+# --- 4. VISUAL ANALYSIS ---
 st.divider()
-if st.checkbox("Show recent log entries"):
-    try:
-        client = get_gspread_client()
-        sheet = client.open("Daily Activity Log").sheet1
-        data = sheet.get_all_records()
-        if data:
-            st.dataframe(pd.DataFrame(data).tail(10))
+st.subheader("Visual Analysis")
+
+# Month Selector
+months = ["January", "February", "March", "April", "May", "June", 
+          "July", "August", "September", "October", "November", "December"]
+current_month_idx = datetime.now().month - 1
+selected_month_name = st.selectbox("Select Month to Review", months, index=current_month_idx)
+
+try:
+    client = get_gspread_client()
+    sheet = client.open("Daily Activity Log").sheet1
+    raw_data = sheet.get_all_records()
+    df = pd.DataFrame(raw_data)
+
+    if not df.empty:
+        # Convert Date column and filter by selected month
+        df['Date'] = pd.to_datetime(df['Date'])
+        df_filtered = df[df['Date'].dt.month_name() == selected_month_name].copy()
+
+        if df_filtered.empty:
+            st.info(f"No data logged for {selected_month_name} yet.")
         else:
-            st.info("The sheet is currently empty.")
-    except:
-        st.info("No data found yet. Save your first entry to see the log.")
+            # Prepare data for stacked bars
+            ex1 = df_filtered[['Date', 'Ex1_Type', 'Ex1_Mins']].rename(columns={'Ex1_Type': 'Type', 'Ex1_Mins': 'Mins'})
+            ex2 = df_filtered[['Date', 'Ex2_Type', 'Ex2_Mins']].rename(columns={'Ex2_Type': 'Type', 'Ex2_Mins': 'Mins'})
+            df_plot = pd.concat([ex1, ex2])
+            df_plot = df_plot[df_plot['Type'] != "None"]
+
+            # Dual-Axis Chart
+            base = alt.Chart(df_plot).encode(
+                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}')
+            )
+
+            # Bars (Stacked Exercise)
+            bars = base.mark_bar(opacity=0.7).encode(
+                y=alt.Y('sum(Mins):Q', title='Exercise Minutes'),
+                color=alt.Color('Type:N', title='Activity', scale=alt.Scale(scheme='tableau10')),
+                tooltip=['Date', 'Type', 'sum(Mins)']
+            )
+
+            # Lines (Health Metrics)
+            line_base = alt.Chart(df_filtered).encode(x='day(Date):O')
+            lines = line_base.transform_fold(
+                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
+            ).mark_line(point=True).encode(
+                y=alt.Y('Value:Q', title='Rating (1-5)', scale=alt.Scale(domain=[1, 5])),
+                color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
+            )
+
+            final_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=400)
+            st.altair_chart(final_chart, use_container_width=True)
+
+            # Option to see raw data
+            with st.expander("View Monthly Data Table"):
+                st.dataframe(df_filtered.sort_values('Date', ascending=False))
+
+except Exception as e:
+    st.info("Log some data to see the chart!")
