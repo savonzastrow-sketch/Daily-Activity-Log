@@ -126,38 +126,32 @@ try:
 
             # Define a fixed color map for your activities
             activity_colors = {
-                "Swim": "#72B7B2", 
-                "Yoga": "#76A04F", 
-                "Run": "#E15759",  
-                "Cycle": "#4E79A7",
-                "Other": "#BAB0AC" 
+                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Other": "#BAB0AC"
             }
 
-            # 1. Define the Shared X-Axis explicitly
-            x_axis = alt.X('date(Date):O', title=f'Day of {selected_month_name}')
-
-            # 2. Bars (Stacked Exercise)
-            bars = alt.Chart(df_plot).mark_bar(opacity=0.7).encode(
-                x=x_axis,
+            # 1. Prepare Exercise Data with a custom label
+            bars = alt.Chart(df_plot).transform_calculate(
+                # Creates a label like "01-Thu"
+                day_label="day(datum.Date) < 10 ? '0' + day(datum.Date) : '' + day(datum.Date)"
+            ).mark_bar(opacity=0.7).encode(
+                x=alt.X('day_label:O', title=f'Day of {selected_month_name}', sort='ascending'),
                 y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
-                color=alt.Color('Type:N', 
-                    title='Activity', 
-                    scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values()))
-                ),
-                tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
+                color=alt.Color('Type:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values()))),
+                tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum')]
             )
 
-            # 3. Lines (Health Metrics)
-            lines = alt.Chart(df_filtered).transform_fold(
-                ['Satisfaction', 'Neuralgia'], 
-                as_=['Metric', 'Value']
+            # 2. Prepare Health Data with the SAME custom label
+            lines = alt.Chart(df_filtered).transform_calculate(
+                day_label="day(datum.Date) < 10 ? '0' + day(datum.Date) : '' + day(datum.Date)"
+            ).transform_fold(
+                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
-                x=x_axis,
+                x=alt.X('day_label:O', sort='ascending'),
                 y=alt.Y('Value:Q', title='Rating (1-5)', scale=alt.Scale(domain=[1, 5])),
                 color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
             )
 
-            # 4. Combine and Display
+            # 3. Layer them together
             final_chart = alt.layer(bars, lines).resolve_scale(
                 y='independent'
             ).properties(height=400)
