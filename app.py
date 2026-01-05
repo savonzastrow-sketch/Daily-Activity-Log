@@ -126,7 +126,7 @@ try:
 
             # Base Chart using date number (1, 2, 3...) to ensure correct sorting
             chart_base = alt.Chart(df_plot).encode(
-                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}', sort=alt.EncodingSortField(field='Date', order='ascending'))
+                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}', sort=alt.EncodingSortField(field='Date', order='ascending')))
 
             # Bars
             bars = chart_base.mark_bar(opacity=0.7).encode(
