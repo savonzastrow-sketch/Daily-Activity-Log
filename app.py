@@ -52,21 +52,36 @@ with st.form("activity_form", clear_on_submit=True):
         neuralgia = st.slider("Neuralgia/Pain Rating (1-5)", 1, 5, 1)
         
     with col2:
-        ex_type = st.selectbox("Exercise Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"])
-        ex_mins = st.number_input("Duration (Minutes)", min_value=0.0, step=5.0)
+        st.subheader("Exercise 1")
+        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex1_type")
+        ex_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
+        
+        # Add a checkbox to reveal a second exercise
+        add_second = st.checkbox("Add second exercise?")
+        
+        ex2_type = "None"
+        ex2_mins = 0.0
+        
+        if add_second:
+            st.divider()
+            st.subheader("Exercise 2")
+            ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex2_type")
+            ex2_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
     
     insights = st.text_area("Daily Insights & Health Notes")
     
     submit = st.form_submit_button("Save to Google Sheet")
 
 if submit:
-    # Prepare the data row
+    # Prepare the data row with 8 columns total
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
         neuralgia,
         ex_type,
         ex_mins,
+        ex2_type,
+        ex2_mins,
         insights
     ]
     log_activity_data(new_entry)
