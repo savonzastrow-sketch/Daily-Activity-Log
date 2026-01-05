@@ -1,6 +1,7 @@
 import streamlit as st
 import gspread
 import pandas as pd
+import pytz
 from datetime import datetime
 
 # 1. AUTHENTICATION
@@ -67,7 +68,12 @@ with st.form("activity_form", clear_on_submit=True):
     submit = st.form_submit_button("Save to Google Sheet")
 
 if submit:
-    # Prepare the data row with 8 columns total
+    # 1. Get the current time in EST
+    est = pytz.timezone('US/Eastern')
+    timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
+    
+    # 2. Prepare the data row
+    # We keep date_val as the "Journal Date" and add the timestamp at the end
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
@@ -76,7 +82,8 @@ if submit:
         ex_mins,
         ex2_type,
         ex2_mins,
-        insights
+        insights,
+        timestamp_est  # This ensures we know exactly when it was saved in EST
     ]
     log_activity_data(new_entry)
 
