@@ -124,20 +124,20 @@ try:
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
-            # Base Chart
+            # Base Chart using date number (1, 2, 3...) to ensure correct sorting
             chart_base = alt.Chart(df_plot).encode(
-                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}')
+                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
             )
 
             # Bars
             bars = chart_base.mark_bar(opacity=0.7).encode(
                 y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
-                color=alt.Color('Type:N', title='Activity', scale=alt.Scale(scheme='tableau10')),
+                color=alt.Color('Type:N', title='Activity', scale=alt.Scale(domain=['Swim', 'Yoga', 'Run', 'Cycle', 'Other'], range=['#72B7B2', '#76A04F', '#E15759', '#4E79A7', '#BAB0AC'])),
                 tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
             )
 
             # Line Chart (Health Metrics)
-            line_base = alt.Chart(df_filtered).encode(x='day(Date):O')
+            line_base = alt.Chart(df_filtered).encode(x='date(Date):O')
             lines = line_base.transform_fold(
                 ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
