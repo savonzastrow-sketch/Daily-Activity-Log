@@ -56,17 +56,11 @@ with st.form("activity_form", clear_on_submit=True):
         ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex1_type")
         ex_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
         
-        # Add a checkbox to reveal a second exercise
-        add_second = st.checkbox("Add second exercise?")
+        st.divider()
         
-        ex2_type = "None"
-        ex2_mins = 0.0
-        
-        if add_second:
-            st.divider()
-            st.subheader("Exercise 2")
-            ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex2_type")
-            ex2_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
+        st.subheader("Exercise 2")
+        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex2_type", index=0)
+        ex2_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
     
     insights = st.text_area("Daily Insights & Health Notes")
     
