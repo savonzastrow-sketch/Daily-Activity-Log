@@ -124,20 +124,36 @@ try:
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
-            # Base Chart
+            # Define a fixed color map for your activities
+            activity_colors = {
+                "Swim": "#72B7B2", 
+                "Yoga": "#76A04F", 
+                "Run": "#E15759",  
+                "Cycle": "#4E79A7",
+                "Other": "#BAB0AC" 
+            }
+
+            # Base Chart using numeric Day of the Month
             chart_base = alt.Chart(df_plot).encode(
-                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}')
+                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
             )
 
-            # Bars
+            # Bars with Fixed Colors
             bars = chart_base.mark_bar(opacity=0.7).encode(
                 y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
-                color=alt.Color('Type:N', title='Activity', scale=alt.Scale(scheme='tableau10')),
+                color=alt.Color('Type:N', 
+                    title='Activity', 
+                    scale=alt.Scale(
+                        domain=list(activity_colors.keys()), 
+                        range=list(activity_colors.values())
+                    )
+                ),
                 tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
             )
 
-            # Line Chart (Health Metrics)
-            line_base = alt.Chart(df_filtered).encode(x='day(Date):O')
+            # Line Chart (Health Metrics) with matching numeric X-axis
+            line_base = alt.Chart(df_filtered).encode(x='date(Date):O')
+            
             lines = line_base.transform_fold(
                 ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
