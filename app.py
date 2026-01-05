@@ -133,11 +133,6 @@ try:
                 "Other": "#BAB0AC" 
             }
 
-            # Base Chart using numeric Day of the Month
-            chart_base = alt.Chart(df_plot).encode(
-                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
-            )
-
             # 1. Bars (Stacked Exercise)
             bars = alt.Chart(df_plot).mark_bar(opacity=0.7).encode(
                 y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
@@ -157,11 +152,10 @@ try:
                 color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
             )
 
-            # 3. Combine with a Shared X-Axis
+            # 3. Combine with a SHARED X-Axis (Fixes the missing lines)
             final_chart = alt.layer(bars, lines).encode(
                 x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
             ).resolve_scale(y='independent').properties(height=400)
-
             st.altair_chart(final_chart, use_container_width=True)
 
             with st.expander("View Monthly Data Table"):
