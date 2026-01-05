@@ -133,8 +133,12 @@ try:
                 "Other": "#BAB0AC" 
             }
 
-            # 1. Bars (Stacked Exercise)
+            # 1. Define the Shared X-Axis explicitly
+            x_axis = alt.X('date(Date):O', title=f'Day of {selected_month_name}')
+
+            # 2. Bars (Stacked Exercise)
             bars = alt.Chart(df_plot).mark_bar(opacity=0.7).encode(
+                x=x_axis,
                 y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
                 color=alt.Color('Type:N', 
                     title='Activity', 
@@ -143,19 +147,21 @@ try:
                 tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
             )
 
-            # 2. Lines (Health Metrics)
+            # 3. Lines (Health Metrics)
             lines = alt.Chart(df_filtered).transform_fold(
                 ['Satisfaction', 'Neuralgia'], 
                 as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
+                x=x_axis,
                 y=alt.Y('Value:Q', title='Rating (1-5)', scale=alt.Scale(domain=[1, 5])),
                 color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
             )
 
-            # 3. Combine with a SHARED X-Axis (Fixes the missing lines)
-            final_chart = alt.layer(bars, lines).encode(
-                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
-            ).resolve_scale(y='independent').properties(height=400)
+            # 4. Combine and Display
+            final_chart = alt.layer(bars, lines).resolve_scale(
+                y='independent'
+            ).properties(height=400)
+
             st.altair_chart(final_chart, use_container_width=True)
 
             with st.expander("View Monthly Data Table"):
