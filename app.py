@@ -151,11 +151,14 @@ try:
                 tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
             )
 
-            # Line Chart (Health Metrics) with matching numeric X-axis
-            line_base = alt.Chart(df_filtered).encode(x='date(Date):O')
+            # Line Chart (Health Metrics) using the SAME numeric X-axis
+            line_base = alt.Chart(df_filtered).encode(
+                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}')
+            )
             
             lines = line_base.transform_fold(
-                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
+                ['Satisfaction', 'Neuralgia'], 
+                as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
                 y=alt.Y('Value:Q', title='Rating (1-5)', scale=alt.Scale(domain=[1, 5])),
                 color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
