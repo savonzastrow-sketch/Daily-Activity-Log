@@ -2,6 +2,7 @@ import streamlit as st
 import gspread
 import pandas as pd
 import pytz
+import altair as alt
 from datetime import datetime
 
 # 1. AUTHENTICATION
@@ -29,7 +30,7 @@ def log_activity_data(entry_data):
             sheet = spreadsheet.sheet1
             
             # Create Headers based on your fields
-            headers = ["Date", "Satisfaction", "Neuralgia", "Exercise_Type", "Exercise_Mins", "Insights"]
+            headers = ["Date", "Satisfaction", "Neuralgia", "Ex1_Type", "Ex1_Mins", "Ex2_Type", "Ex2_Mins", "Insights", "Timestamp"]
             sheet.append_row(headers)
 
         # Log the data row
@@ -68,12 +69,11 @@ with st.form("activity_form", clear_on_submit=True):
     submit = st.form_submit_button("Save to Google Sheet")
 
 if submit:
-    # 1. Get the current time in EST
+    # 1. Get current time in EST
     est = pytz.timezone('US/Eastern')
     timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
     
-    # 2. Prepare the data row
-    # We keep date_val as the "Journal Date" and add the timestamp at the end
+    # 2. Prepare the data row (9 columns)
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
@@ -83,20 +83,76 @@ if submit:
         ex2_type,
         ex2_mins,
         insights,
-        timestamp_est  # This ensures we know exactly when it was saved in EST
+        timestamp_est
     ]
     log_activity_data(new_entry)
 
-# --- 4. FUTURE STEP: VIEW DATA ---
+# --- 4. VISUAL ANALYSIS ---
 st.divider()
-if st.checkbox("Show recent log entries"):
-    try:
-        client = get_gspread_client()
-        sheet = client.open("Daily Activity Log").sheet1
-        data = sheet.get_all_records()
-        if data:
-            st.dataframe(pd.DataFrame(data).tail(10))
+st.subheader("Visual Analysis")
+
+months = ["January", "February", "March", "April", "May", "June", 
+          "July", "August", "September", "October", "November", "December"]
+current_month_idx = datetime.now().month - 1
+selected_month_name = st.selectbox("Select Month to Review", months, index=current_month_idx)
+
+try:
+    client = get_gspread_client()
+    sheet = client.open("Daily Activity Log").sheet1
+    all_values = sheet.get_all_values()
+    
+    if len(all_values) > 1:
+        # Load into DataFrame using the first row as headers
+        df = pd.DataFrame(all_values[1:], columns=all_values[0])
+        
+        # Convert types so the chart can read them
+        df['Date'] = pd.to_datetime(df['Date'])
+        df['Ex1_Mins'] = pd.to_numeric(df['Ex1_Mins'], errors='coerce').fillna(0)
+        df['Ex2_Mins'] = pd.to_numeric(df['Ex2_Mins'], errors='coerce').fillna(0)
+        df['Satisfaction'] = pd.to_numeric(df['Satisfaction'], errors='coerce').fillna(0)
+        df['Neuralgia'] = pd.to_numeric(df['Neuralgia'], errors='coerce').fillna(0)
+
+        # Filter for the selected month
+        df_filtered = df[df['Date'].dt.month_name() == selected_month_name].copy()
+
+        if df_filtered.empty:
+            st.info(f"No data logged for {selected_month_name} yet.")
         else:
-            st.info("The sheet is currently empty.")
-    except:
-        st.info("No data found yet. Save your first entry to see the log.")
+            # Prepare data for stacked bars by combining Ex1 and Ex2
+            ex1 = df_filtered[['Date', 'Ex1_Type', 'Ex1_Mins']].rename(columns={'Ex1_Type': 'Type', 'Ex1_Mins': 'Mins'})
+            ex2 = df_filtered[['Date', 'Ex2_Type', 'Ex2_Mins']].rename(columns={'Ex2_Type': 'Type', 'Ex2_Mins': 'Mins'})
+            df_plot = pd.concat([ex1, ex2])
+            df_plot = df_plot[df_plot['Type'] != "None"]
+
+            # Base Chart
+            chart_base = alt.Chart(df_plot).encode(
+                x=alt.X('day(Date):O', title=f'Days in {selected_month_name}')
+            )
+
+            # Bars
+            bars = chart_base.mark_bar(opacity=0.7).encode(
+                y=alt.Y('Mins:Q', aggregate='sum', title='Exercise Minutes'),
+                color=alt.Color('Type:N', title='Activity', scale=alt.Scale(scheme='tableau10')),
+                tooltip=['Date', 'Type', alt.Tooltip('Mins:Q', aggregate='sum', title='Total Mins')]
+            )
+
+            # Line Chart (Health Metrics)
+            line_base = alt.Chart(df_filtered).encode(x='day(Date):O')
+            lines = line_base.transform_fold(
+                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
+            ).mark_line(point=True).encode(
+                y=alt.Y('Value:Q', title='Rating (1-5)', scale=alt.Scale(domain=[1, 5])),
+                color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
+            )
+
+            final_chart = alt.layer(bars, lines).resolve_scale(y='independent').properties(height=400)
+            st.altair_chart(final_chart, use_container_width=True)
+
+            with st.expander("View Monthly Data Table"):
+                st.dataframe(df_filtered.sort_values('Date', ascending=False))
+    else:
+        st.info("Log some data to see the chart!")
+
+except Exception as e:
+    st.error("Error loading chart data.")
+    st.exception(e)
