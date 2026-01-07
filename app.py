@@ -73,24 +73,24 @@ with st.form("activity_form", clear_on_submit=True):
         ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
         ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex2_miles")
 
-        st.divider()
-        st.subheader("⏰ Daily Time Tracking")
-        st.info("Record your activities and durations (in minutes) throughout the day.")
+    st.divider()
+    st.subheader("⏰ Daily Time Tracking")
+    st.info("Record your activities and durations (in minutes) throughout the day.")
+
+    activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Exercise", "Read/Reflect", "Entertainment", "Work-Calls", "Personal Calls", "Hobby"]
     
-        activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Exercise", "Read/Reflect", "Entertainment", "Work-Calls", "Personal Calls", "Hobby"]
-        
-        # Storage for the 10 rows of activity data
-        daily_activities = []
-    
-        # Using a loop to create 10 full-width rows
-        for i in range(1, 11):
-            # Adjusted column ratios to give more space to Notes/Details
-            cols = st.columns([1.5, 1, 3.5]) 
-            act_type = cols[0].selectbox(f"Activity {i}", activity_options, key=f"act_type_{i}")
-            # Changed to number_input for minutes
-            act_mins = cols[1].number_input("Mins", min_value=0, step=5, key=f"act_time_{i}") 
-            act_text = cols[2].text_input("Notes/Details", key=f"act_text_{i}", placeholder="What did you accomplish?")
-            daily_activities.extend([act_type, act_mins, act_text])
+    # Storage for the 10 rows of activity data
+    daily_activities = []
+
+    # Using a loop to create 10 full-width rows
+    for i in range(1, 11):
+        # Adjusted column ratios to give more space to Notes/Details
+        cols = st.columns([1.5, 1, 3.5]) 
+        act_type = cols[0].selectbox(f"Activity {i}", activity_options, key=f"act_type_{i}")
+        # Changed to number_input for minutes
+        act_mins = cols[1].number_input("Mins", min_value=0, step=5, key=f"act_time_{i}") 
+        act_text = cols[2].text_input("Notes/Details", key=f"act_text_{i}", placeholder="What did you accomplish?")
+        daily_activities.extend([act_type, act_mins, act_text])
     
     insights = st.text_area("Daily Insights & Health Notes")
     
