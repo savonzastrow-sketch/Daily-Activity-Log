@@ -79,7 +79,7 @@ with st.form("activity_form", clear_on_submit=True):
     st.subheader("⏰ Daily Time Tracking")
     st.info("Record your activities and durations (in minutes) throughout the day.")
 
-    activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Exercise", "Read/Reflect", "Entertainment", "Work-Calls", "Personal Calls", "Hobby"]
+    activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Entertainment", "Work-Calls", "Personal Calls", "Hobby"]
     
     # Storage for the 10 rows of activity data
     daily_activities = []
