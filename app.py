@@ -49,7 +49,7 @@ st.title("☀️ Daily Activity Log")
 st.write("Record your health metrics and exercise for today.")
 
 with st.form("activity_form", clear_on_submit=True):
-  date_val = st.date_input("Date", value=datetime.now())      
+    date_val = st.date_input("Date", value=datetime.now())      
     
     # 1. Satisfaction & Neuralgia (Full Width)
     st.subheader("Daily Ratings")
