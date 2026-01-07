@@ -75,19 +75,22 @@ with st.form("activity_form", clear_on_submit=True):
 
         st.divider()
         st.subheader("⏰ Daily Time Tracking")
-        st.info("Record your activities throughout the day.")
+        st.info("Record your activities and durations (in minutes) throughout the day.")
     
         activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Exercise", "Read/Reflect", "Entertainment", "Work-Calls", "Personal Calls", "Hobby"]
         
         # Storage for the 10 rows of activity data
         daily_activities = []
     
+        # Using a loop to create 10 full-width rows
         for i in range(1, 11):
-            cols = st.columns([2, 1, 3])
+            # Adjusted column ratios to give more space to Notes/Details
+            cols = st.columns([1.5, 1, 3.5]) 
             act_type = cols[0].selectbox(f"Activity {i}", activity_options, key=f"act_type_{i}")
-            act_time = cols[1].text_input("Time (e.g. 9am)", key=f"act_time_{i}")
-            act_text = cols[2].text_input("Notes/Details", key=f"act_text_{i}")
-            daily_activities.extend([act_type, act_time, act_text])
+            # Changed to number_input for minutes
+            act_mins = cols[1].number_input("Mins", min_value=0, step=5, key=f"act_time_{i}") 
+            act_text = cols[2].text_input("Notes/Details", key=f"act_text_{i}", placeholder="What did you accomplish?")
+            daily_activities.extend([act_type, act_mins, act_text])
     
     insights = st.text_area("Daily Insights & Health Notes")
     
