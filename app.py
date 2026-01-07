@@ -30,7 +30,7 @@ def log_activity_data(entry_data):
             sheet = spreadsheet.sheet1
             
             # Create Headers based on your fields
-            headers = ["Date", "Satisfaction", "Neuralgia", "Ex1_Type", "Ex1_Mins", "Ex2_Type", "Ex2_Mins", "Insights", "Timestamp"]
+            headers = ["Date", "Satisfaction", "Neuralgia", "Ex1_Type", "Ex1_Mins", "Ex1_Miles", "Ex2_Type", "Ex2_Mins", "Ex2_Miles", "Insights", "Timestamp"]
             sheet.append_row(headers)
 
         # Log the data row
@@ -56,13 +56,19 @@ with st.form("activity_form", clear_on_submit=True):
     with col2:
         st.subheader("Exercise 1")
         ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex1_type")
-        ex_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
+        # Create two columns for mins and miles
+        m1_col1, m1_col2 = st.columns(2)
+        ex_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
+        ex_miles = m1_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex1_miles")
         
         st.divider()
         
         st.subheader("Exercise 2")
-        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Other"], key="ex2_type", index=0)
-        ex2_mins = st.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
+        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex2_type")
+        # Create two columns for mins and miles
+        m2_col1, m2_col2 = st.columns(2)
+        ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
+        ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex2_miles")
     
     insights = st.text_area("Daily Insights & Health Notes")
     
@@ -80,8 +86,10 @@ if submit:
         neuralgia,
         ex_type,
         ex_mins,
+        ex_miles,
         ex2_type,
         ex2_mins,
+        ex2_miles,
         insights,
         timestamp_est
     ]
