@@ -29,8 +29,11 @@ def log_activity_data(entry_data):
             spreadsheet.share(st.secrets["gcp_service_account"]["client_email"], role='writer', perm_type='user')
             sheet = spreadsheet.sheet1
             
-            # Create Headers based on your fields
-            headers = ["Date", "Satisfaction", "Neuralgia", "Ex1_Type", "Ex1_Mins", "Ex1_Miles", "Ex2_Type", "Ex2_Mins", "Ex2_Miles", "Insights", "Timestamp"]
+            headers = ["Date", "Satisfaction", "Neuralgia", "Ex1_Type", "Ex1_Mins", "Ex1_Miles", "Ex2_Type", "Ex2_Mins", "Ex2_Miles", "Insights"]
+            # Add the 30 new tracking headers
+            for i in range(1, 11):
+                headers.extend([f"Act{i}_Type", f"Act{i}_Time", f"Act{i}_Text"])
+            headers.append("Timestamp")
             sheet.append_row(headers)
 
         # Log the data row
@@ -46,29 +49,50 @@ st.title("☀️ Daily Activity Log")
 st.write("Record your health metrics and exercise for today.")
 
 with st.form("activity_form", clear_on_submit=True):
-    col1, col2 = st.columns(2)
+    date_val = st.date_input("Date", value=datetime.now())      
     
-    with col1:
-        date_val = st.date_input("Date", datetime.now())
-        satisfaction = st.slider("Satisfaction Rating (1-5)", 1, 5, 3)
-        neuralgia = st.slider("Neuralgia/Pain Rating (1-5)", 1, 5, 1)
-        
-    with col2:
+    # 1. Satisfaction & Neuralgia (Full Width)
+    st.subheader("Daily Ratings")
+    satisfaction = st.select_slider("Satisfaction Rating (1-5)", options=range(1, 6), value=3)
+    neuralgia = st.select_slider("Neuralgia/Pain Rating (1-5)", options=range(1, 6), value=1)
+
+    st.divider()
+
+    # 2. Exercise Sections (Split into Columns)
+    ex_col1, ex_col2 = st.columns(2)
+
+    with ex_col1:
         st.subheader("Exercise 1")
         ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex1_type")
-        # Create two columns for mins and miles
         m1_col1, m1_col2 = st.columns(2)
         ex_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
         ex_miles = m1_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex1_miles")
-        
-        st.divider()
-        
+
+    with ex_col2:
         st.subheader("Exercise 2")
         ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex2_type")
-        # Create two columns for mins and miles
         m2_col1, m2_col2 = st.columns(2)
         ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
         ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex2_miles")
+
+    st.divider()
+    st.subheader("⏰ Daily Time Tracking")
+    st.info("Record your activities and durations (in minutes) throughout the day.")
+
+    activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Nap/Relax", "Freind Time", "Entertainment", "Work-Calls", "Hobby", "Driving"]
+    
+    # Storage for the 10 rows of activity data
+    daily_activities = []
+
+    # Using a loop to create 10 full-width rows
+    for i in range(1, 11):
+        # Adjusted column ratios to give more space to Notes/Details
+        cols = st.columns([1.5, 1, 3.5]) 
+        act_type = cols[0].selectbox(f"Activity {i}", activity_options, key=f"act_type_{i}")
+        # Changed to number_input for minutes
+        act_mins = cols[1].number_input("Mins", min_value=0, step=5, key=f"act_time_{i}") 
+        act_text = cols[2].text_input("Notes/Details", key=f"act_text_{i}", placeholder="What did you accomplish?")
+        daily_activities.extend([act_type, act_mins, act_text])
     
     insights = st.text_area("Daily Insights & Health Notes")
     
@@ -79,7 +103,7 @@ if submit:
     est = pytz.timezone('US/Eastern')
     timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
     
-    # 2. Prepare the data row (9 columns)
+    # Prepare the base data row
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
@@ -90,9 +114,15 @@ if submit:
         ex2_type,
         ex2_mins,
         ex2_miles,
-        insights,
-        timestamp_est
+        insights
     ]
+    
+    # Append the 30 activity tracking fields
+    new_entry.extend(daily_activities)
+    
+    # Add final timestamp
+    new_entry.append(timestamp_est)
+    
     log_activity_data(new_entry)
 
 # --- 4. VISUAL ANALYSIS ---
