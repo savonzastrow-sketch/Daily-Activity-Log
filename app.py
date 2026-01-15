@@ -164,7 +164,7 @@ try:
 
             # 1. Fixed Activity Colors
             activity_colors = {
-                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#808080", "Other": "#BAB0AC"
+                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC"
             }
 
             # --- CHART 1: EXERCISE (Stacked Bar) ---
