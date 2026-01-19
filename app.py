@@ -219,7 +219,7 @@ try:
                 tooltip=['Date', 'Activity', alt.Tooltip('Mins:Q', title='Mins')]
             ).properties(height=300)
 
-st.altair_chart(activity_breakdown_chart, use_container_width=True)
+    st.altair_chart(activity_breakdown_chart, use_container_width=True)
 
             with st.expander("View Monthly Data Table"):
                 st.dataframe(df_filtered.sort_values('Date', ascending=False))
