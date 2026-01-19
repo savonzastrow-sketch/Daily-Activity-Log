@@ -162,17 +162,17 @@ try:
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
-        # Prepare data for Daily Activity Breakdown
-        daily_act_list = []
-        for i in range(1, 11):
-            temp_df = df_filtered[['Date', f'Act{i}_Type', f'Act{i}_Time']].rename(
-                columns={f'Act{i}_Type': 'Activity', f'Act{i}_Time': 'Mins'}
-            )
-            daily_act_list.append(temp_df)
-        
-        df_daily_plot = pd.concat(daily_act_list)
-        df_daily_plot = df_daily_plot[df_daily_plot['Activity'] != "None"]
-        df_daily_plot['Mins'] = pd.to_numeric(df_daily_plot['Mins'], errors='coerce').fillna(0)     
+            # Prepare data for Daily Activity Breakdown
+            daily_act_list = []
+            for i in range(1, 11):
+                temp_df = df_filtered[['Date', f'Act{i}_Type', f'Act{i}_Time']].rename(
+                    columns={f'Act{i}_Type': 'Activity', f'Act{i}_Time': 'Mins'}
+                )
+                daily_act_list.append(temp_df)
+            
+            df_daily_plot = pd.concat(daily_act_list)
+            df_daily_plot = df_daily_plot[df_daily_plot['Activity'] != "None"]
+            df_daily_plot['Mins'] = pd.to_numeric(df_daily_plot['Mins'], errors='coerce').fillna(0)     
             
             # 1. Fixed Activity Colors
             activity_colors = {
