@@ -63,14 +63,14 @@ with st.form("activity_form", clear_on_submit=True):
 
     with ex_col1:
         st.subheader("Exercise 1")
-        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex1_type")
+        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex1_type")
         m1_col1, m1_col2 = st.columns(2)
         ex_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
         ex_miles = m1_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex1_miles")
 
     with ex_col2:
         st.subheader("Exercise 2")
-        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Other"], key="ex2_type")
+        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex2_type")
         m2_col1, m2_col2 = st.columns(2)
         ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
         ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex2_miles")
@@ -164,7 +164,7 @@ try:
 
             # 1. Fixed Activity Colors
             activity_colors = {
-                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Other": "#BAB0AC"
+                "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC"
             }
 
             # --- CHART 1: EXERCISE (Stacked Bar) ---
