@@ -5,6 +5,14 @@ import pytz
 import altair as alt
 from datetime import datetime
 
+# Initialize the "cache" if it doesn't exist yet
+if 'daily_cache' not in st.session_state:
+    st.session_state.daily_cache = []
+
+# Function to add to cache
+def add_to_cache(activity, duration):
+    st.session_state.daily_cache.append({"Activity": activity, "Mins": duration})
+
 # 1. AUTHENTICATION
 @st.cache_resource
 def get_gspread_client():
@@ -84,15 +92,27 @@ with st.form("activity_form", clear_on_submit=True):
     # Storage for the 10 rows of activity data
     daily_activities = []
 
-    # Using a loop to create 10 full-width rows
-    for i in range(1, 11):
-        # Adjusted column ratios to give more space to Notes/Details
-        cols = st.columns([1.5, 1, 3.5]) 
-        act_type = cols[0].selectbox(f"Activity {i}", activity_options, key=f"act_type_{i}")
-        # Changed to number_input for minutes
-        act_mins = cols[1].number_input("Mins", min_value=0, step=5, key=f"act_time_{i}") 
-        act_text = cols[2].text_input("Notes/Details", key=f"act_text_{i}", placeholder="What did you accomplish?")
-        daily_activities.extend([act_type, act_mins, act_text])
+   # Single input row instead of a loop
+    cols = st.columns([1.5, 1, 3.5])
+    act_type = cols[0].selectbox("Activity Type", activity_options, key="current_act")
+    act_mins = cols[1].number_input("Mins", min_value=0, step=5, key="current_mins")
+    act_text = cols[2].text_input("Notes/Details", key="current_notes")
+
+    if st.form_submit_button("Add Activity to Today's List"):
+        if act_type != "None":
+            add_to_cache(act_type, act_mins, act_text)
+            st.success(f"Added {act_type} to temporary list!")
+        else:
+            st.warning("Please select an activity type.")
+
+    if st.form_submit_button("Clear Pending List"):
+                st.session_state.daily_cache = []
+                st.warning("Temporary list has been cleared.")
+                st.rerun()
+    
+    if st.session_state.daily_cache:
+        st.write("### Pending Activities")
+        st.table(st.session_state.daily_cache)
     
     insights = st.text_area("Daily Insights & Health Notes")
     
@@ -117,13 +137,23 @@ if submit:
         insights
     ]
     
-    # Append the 30 activity tracking fields
-    new_entry.extend(daily_activities)
-    
-    # Add final timestamp
-    new_entry.append(timestamp_est)
-    
-    log_activity_data(new_entry)
+       # Convert cache into the 30 Google Sheet columns (10 activities x 3 fields)
+        final_activities = []
+        for i in range(10):
+            if i < len(st.session_state.daily_cache):
+                item = st.session_state.daily_cache[i]
+                final_activities.extend([item['Activity'], item['Mins'], item['Notes']])
+            else:
+                # Fill remaining slots with "None" to keep the spreadsheet columns aligned
+                final_activities.extend(["None", 0, ""])
+        
+        new_entry.extend(final_activities)
+        new_entry.append(timestamp_est)
+        
+        # Log data and clear the temporary cache for tomorrow
+        log_activity_data(new_entry)
+        st.session_state.daily_cache = []
+        st.success("Daily log successfully saved to Google Sheets!")
 
 # --- 4. VISUAL ANALYSIS ---
 st.divider()
