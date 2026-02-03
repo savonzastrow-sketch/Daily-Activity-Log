@@ -162,6 +162,18 @@ try:
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
+            # Prepare data for Daily Activity Breakdown
+            daily_act_list = []
+            for i in range(1, 11):
+                temp_df = df_filtered[['Date', f'Act{i}_Type', f'Act{i}_Time']].rename(
+                    columns={f'Act{i}_Type': 'Activity', f'Act{i}_Time': 'Mins'}
+                )
+                daily_act_list.append(temp_df)
+            
+            df_daily_plot = pd.concat(daily_act_list)
+            df_daily_plot = df_daily_plot[df_daily_plot['Activity'] != "None"]
+            df_daily_plot['Mins'] = pd.to_numeric(df_daily_plot['Mins'], errors='coerce').fillna(0)     
+            
             # 1. Fixed Activity Colors
             activity_colors = {
                 "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC"
@@ -197,6 +209,17 @@ try:
             ).properties(height=250)
 
             st.altair_chart(health_chart, use_container_width=True)
+
+            # --- CHART 3: DAILY ACTIVITIES (Stacked Bar) ---
+            st.write("### Daily Time Breakdown")
+            activity_breakdown_chart = alt.Chart(df_daily_plot).mark_bar(opacity=0.8).encode(
+                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}'),
+                y=alt.Y('Mins:Q', aggregate='sum', title='Total Minutes'),
+                color=alt.Color('Activity:N', title='Activity Type'),
+                tooltip=['Date', 'Activity', alt.Tooltip('Mins:Q', title='Mins')]
+            ).properties(height=300)
+
+            st.altair_chart(activity_breakdown_chart, use_container_width=True)
 
             with st.expander("View Monthly Data Table"):
                 st.dataframe(df_filtered.sort_values('Date', ascending=False))
