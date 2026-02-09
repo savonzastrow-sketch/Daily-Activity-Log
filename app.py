@@ -9,6 +9,20 @@ from datetime import datetime
 if 'daily_cache' not in st.session_state:
     st.session_state.daily_cache = []
 
+# Initialize state for all form fields so they don't reset when adding activities
+for key in [
+    'satisfaction', 'neuralgia', 'ex1_type', 'ex1_mins', 
+    'ex1_miles', 'ex2_type', 'ex2_mins', 'ex2_miles', 'insights'
+]:
+    if key not in st.session_state:
+        # Set default values based on the field type
+        if 'mins' in key or 'miles' in key: 
+            st.session_state[key] = 0.0
+        elif key in ['satisfaction', 'neuralgia']: 
+            st.session_state[key] = 1 if key == 'neuralgia' else 3
+        else: 
+            st.session_state[key] = ""
+
 # Function to add to cache - fixed to include the 'Notes' key
 def add_to_cache(activity, duration, notes):
     st.session_state.daily_cache.append({
@@ -60,8 +74,8 @@ with st.form("activity_form", clear_on_submit=True):
     date_val = st.date_input("Date", value=datetime.now())      
     
     st.subheader("Daily Ratings")
-    satisfaction = st.select_slider("Satisfaction Rating (1-5)", options=range(1, 6), value=3)
-    neuralgia = st.select_slider("Neuralgia/Pain Rating (1-5)", options=range(1, 6), value=1)
+    satisfaction = st.select_slider("Satisfaction Rating (1-5)", options=range(1, 6), key="satisfaction")
+    neuralgia = st.select_slider("Neuralgia/Pain Rating (1-5)", options=range(1, 6), key="neuralgia")
 
     st.divider()
 
@@ -100,14 +114,14 @@ with st.form("activity_form", clear_on_submit=True):
             st.warning("Please select an activity type.")
 
     if btn_col2.form_submit_button("Clear List"):
-        st.session_state.daily_cache = []
+        st.session_state.clear()
         st.rerun()
     
     if st.session_state.daily_cache:
         st.write("### Pending Activities")
         st.table(st.session_state.daily_cache)
     
-    insights = st.text_area("Daily Insights & Health Notes")
+    insights = st.text_area("Daily Insights & Health Notes", key="insights")
     
     # Final Submission Button
     submit = st.form_submit_button("Save to Google Sheet")
