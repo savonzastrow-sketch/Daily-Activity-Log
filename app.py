@@ -71,31 +71,31 @@ def log_activity_data(entry_data):
 st.title("☀️ Daily Activity Log")
 
 st.divider()
-    st.subheader("⏰ Daily Time Tracking")
-    
-    activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Nap/Relax", "Freind Time", "Entertainment", "Work-Calls", "Hobby", "Driving"]
-    
-    cols = st.columns([1.5, 1, 3.5])
-    act_type = cols[0].selectbox("Activity Type", activity_options, key="current_act")
-    act_mins = cols[1].number_input("Mins", min_value=0, step=5, key="current_mins")
-    act_text = cols[2].text_input("Notes/Details", key="current_notes")
+st.subheader("⏰ Daily Time Tracking")
 
-    # Add and Clear buttons inside the form
-    btn_col1, btn_col2 = st.columns(2)
-    if btn_col1.button("Add Activity to List"):
-        if act_type != "None":
-            add_to_cache(act_type, act_mins, act_text)
-            st.rerun()
-        else:
-            st.warning("Please select an activity type.")
+activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Nap/Relax", "Freind Time", "Entertainment", "Work-Calls", "Hobby", "Driving"]
 
-    if btn_col2.button("Clear List"):
-        st.session_state.clear()
+cols = st.columns([1.5, 1, 3.5])
+act_type = cols[0].selectbox("Activity Type", activity_options, key="current_act")
+act_mins = cols[1].number_input("Mins", min_value=0, step=5, key="current_mins")
+act_text = cols[2].text_input("Notes/Details", key="current_notes")
+
+# Add and Clear buttons inside the form
+btn_col1, btn_col2 = st.columns(2)
+if btn_col1.button("Add Activity to List"):
+    if act_type != "None":
+        add_to_cache(act_type, act_mins, act_text)
         st.rerun()
-    
-    if st.session_state.daily_cache:
-        st.write("### Pending Activities")
-        st.table(st.session_state.daily_cache)
+    else:
+        st.warning("Please select an activity type.")
+
+if btn_col2.button("Clear List"):
+    st.session_state.clear()
+    st.rerun()
+
+if st.session_state.daily_cache:
+    st.write("### Pending Activities")
+    st.table(st.session_state.daily_cache)
 
 with st.form("activity_form", clear_on_submit=True):
     date_val = st.date_input("Date", value=datetime.now())      
