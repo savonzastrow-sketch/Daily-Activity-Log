@@ -196,7 +196,7 @@ try:
                 x=alt.X('date(Date):O'),
                 y=alt.Y('Value:Q', scale=alt.Scale(domain=[1, 5])),
                 color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B'])),
-                tooltip=['Date', 'Metric', 'Value']
+                tooltip=['Date', 'Metric:N', 'Value:Q']
             ).properties(height=250)
             st.altair_chart(health_chart, use_container_width=True)
 
@@ -217,7 +217,7 @@ try:
                 x=alt.X('date(Date):O'),
                 y=alt.Y('Mins:Q', aggregate='sum'),
                 color=alt.Color('Activity:N'),
-                tooltip=['Date', 'Activity', 'Mins']
+                tooltip=['Date', 'Activity:N', 'Mins:Q']
             ).properties(height=300)
             st.altair_chart(breakdown_chart, use_container_width=True)
 
