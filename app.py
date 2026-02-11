@@ -5,69 +5,38 @@ import pytz
 import altair as alt
 from datetime import datetime
 
-# Initialize the "cache" if it doesn't exist yet
-if 'daily_cache' not in st.session_state:
-    st.session_state.daily_cache = []
-
-# Initialize state for all form fields so they don't reset when adding activities
-for key in [
-    'satisfaction', 'neuralgia', 'ex1_type', 'ex1_mins', 
-    'ex1_miles', 'ex2_type', 'ex2_mins', 'ex2_miles', 'insights'
-]:
-    if key not in st.session_state:
-        # Set default values based on the field type
-        if 'mins' in key or 'miles' in key: 
-            st.session_state[key] = 0.0
-        elif key in ['satisfaction', 'neuralgia']: 
-            st.session_state[key] = 1 if key == 'neuralgia' else 3
-        else: 
-            st.session_state[key] = ""
-
-# Function to add to cache - fixed to include the 'Notes' key
-def add_to_cache(activity, duration, notes):
-    st.session_state.daily_cache.append({
-        "Activity": activity, 
-        "Mins": duration, 
-        "Notes": notes
-    })
-
-# 1. AUTHENTICATION
+# --- 1. AUTHENTICATION ---
 @st.cache_resource
 def get_gspread_client():
     info = st.secrets["gcp_service_account"]
     client = gspread.service_account_from_dict(info)
     return client
 
-# 2. DATA WRITE FUNCTION
+# --- 2. DATA WRITE FUNCTIONS ---
+def add_to_temp_storage(activity, duration, notes):
+    """Saves a single activity row to the Temp_Activities tab."""
+    try:
+        client = get_gspread_client()
+        temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
+        temp_sheet.append_row([activity, duration, notes])
+    except Exception as e:
+        st.error("Error saving to temporary storage.")
+        st.exception(e)
+
 def log_activity_data(entry_data):
+    """Saves the final combined daily entry to the main sheet."""
     try:
         client = get_gspread_client()
         sheet_name = "Daily Activity Log" 
-
-        # Open or create the sheet
-        try:
-            spreadsheet = client.open(sheet_name)
-            sheet = spreadsheet.sheet1
-        except gspread.SpreadsheetNotFound:
-            folder_id = st.secrets["FOLDER_ID"]
-            spreadsheet = client.create(sheet_name, folder_id=folder_id)
-            spreadsheet.share(st.secrets["gcp_service_account"]["client_email"], role='writer', perm_type='user')
-            sheet = spreadsheet.sheet1
-            
-            headers = ["Date", "Satisfaction", "Neuralgia", "Ex1_Type", "Ex1_Mins", "Ex1_Miles", "Ex2_Type", "Ex2_Mins", "Ex2_Miles", "Insights"]
-            for i in range(1, 11):
-                headers.extend([f"Act{i}_Type", f"Act{i}_Time", f"Act{i}_Text"])
-            headers.append("Timestamp")
-            sheet.append_row(headers)
-
+        spreadsheet = client.open(sheet_name)
+        sheet = spreadsheet.sheet1
         sheet.append_row(entry_data)
         st.success(f"Successfully saved entry for {entry_data[0]}!")
-
     except Exception as e:
         st.error("Google Sheets Connection Error")
         st.exception(e)
 
-# 3. STREAMLIT UI - INPUT TEMPLATE
+# --- 3. STREAMLIT UI - INPUT TEMPLATE ---
 st.title("☀️ Daily Activity Log")
 
 st.divider()
@@ -80,57 +49,79 @@ act_type = cols[0].selectbox("Activity Type", activity_options, key="current_act
 act_mins = cols[1].number_input("Mins", min_value=0, step=5, key="current_mins")
 act_text = cols[2].text_input("Notes/Details", key="current_notes")
 
-# Add and Clear buttons inside the form
 btn_col1, btn_col2 = st.columns(2)
+
 if btn_col1.button("Add Activity to List"):
     if act_type != "None":
-        add_to_cache(act_type, act_mins, act_text)
+        add_to_temp_storage(act_type, act_mins, act_text)
         st.rerun()
     else:
         st.warning("Please select an activity type.")
 
 if btn_col2.button("Clear List"):
-    st.session_state.clear()
-    st.rerun()
+    try:
+        client = get_gspread_client()
+        temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
+        # Clear data from A2 down (preserving headers)
+        temp_sheet.batch_clear(['A2:C100'])
+        st.rerun()
+    except Exception as e:
+        st.error("Error clearing temporary storage.")
 
-if st.session_state.daily_cache:
-    st.write("### Pending Activities")
-    st.table(st.session_state.daily_cache)
+# Display Pending Activities from Google Sheets
+try:
+    client = get_gspread_client()
+    temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
+    temp_data = temp_sheet.get_all_records()
+    
+    if temp_data:
+        st.write("### Pending Activities (Saved in Cloud)")
+        st.table(temp_data)
+except:
+    st.info("No pending activities found in cloud storage.")
 
+# Main Form for Ratings, Exercises, and final Save
 with st.form("activity_form", clear_on_submit=True):
     date_val = st.date_input("Date", value=datetime.now())      
     
     st.subheader("Daily Ratings")
-    satisfaction = st.select_slider("Satisfaction Rating (1-5)", options=range(1, 6), key="satisfaction")
-    neuralgia = st.select_slider("Neuralgia/Pain Rating (1-5)", options=range(1, 6), key="neuralgia")
+    satisfaction = st.select_slider("Satisfaction Rating (1-5)", options=range(1, 6), value=3)
+    neuralgia = st.select_slider("Neuralgia/Pain Rating (1-5)", options=range(1, 6), value=1)
 
     st.divider()
 
     ex_col1, ex_col2 = st.columns(2)
     with ex_col1:
         st.subheader("Exercise 1")
-        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex1_type")
+        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"])
         m1_col1, m1_col2 = st.columns(2)
-        ex_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_mins")
-        ex_miles = m1_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex1_miles")
+        ex_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0)
+        ex_miles = m1_col2.number_input("Miles", min_value=0.0, step=0.1)
 
     with ex_col2:
         st.subheader("Exercise 2")
-        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex2_type")
+        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"])
         m2_col1, m2_col2 = st.columns(2)
-        ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_mins")
-        ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex2_miles")
+        ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0)
+        ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1)
     
-    insights = st.text_area("Daily Insights & Health Notes", key="insights")
+    insights = st.text_area("Daily Insights & Health Notes")
     
-    # Final Submission Button
     submit = st.form_submit_button("Save to Google Sheet")
 
-# --- Logic after Submit ---
+# --- 4. LOGIC AFTER SUBMIT ---
 if submit:
+    # 1. Setup metadata
     est = pytz.timezone('US/Eastern')
     timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
 
+    # 2. Pull activities from Temp tab
+    client = get_gspread_client()
+    temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
+    # Get all rows, skip header
+    temp_rows = temp_sheet.get_all_values()[1:] 
+
+    # 3. Build main entry list
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
@@ -144,21 +135,28 @@ if submit:
         insights
     ]
 
+    # 4. Map the first 10 activities to the columns
     final_activities = []
     for i in range(10):
-        if i < len(st.session_state.daily_cache):
-            item = st.session_state.daily_cache[i]
-            final_activities.extend([item['Activity'], item['Mins'], item['Notes']])
+        if i < len(temp_rows):
+            row = temp_rows[i]
+            # row[0]=Activity, row[1]=Mins, row[2]=Notes
+            final_activities.extend([row[0], row[1], row[2]])
         else:
             final_activities.extend(["None", 0, ""])
 
     new_entry.extend(final_activities)
     new_entry.append(timestamp_est)
 
+    # 5. Save to Main Sheet
     log_activity_data(new_entry)
-    st.session_state.daily_cache = [] # Clear cache after successful save
+    
+    # 6. Clear the Temp tab for a fresh start tomorrow
+    temp_sheet.batch_clear(['A2:C100'])
+    st.rerun()
 
-# --- 4. VISUAL ANALYSIS ---
+# --- 5. VISUAL ANALYSIS ---
+# (Keep your existing visual analysis code here exactly as it was)
 st.divider()
 st.subheader("Visual Analysis")
 
@@ -176,7 +174,6 @@ try:
         df = pd.DataFrame(all_values[1:], columns=all_values[0])
         df['Date'] = pd.to_datetime(df['Date'])
         
-        # Numeric conversion
         for col in ['Ex1_Mins', 'Ex2_Mins', 'Satisfaction', 'Neuralgia']:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
