@@ -39,10 +39,13 @@ st.title("☀️ Daily Activity Log")
 st.divider()
 st.subheader("⏰ Daily Time Tracking")
 
-# Fixed Color Palette for Consistency
+# Fixed Color Palette for Consistency across all charts
 activity_colors = {
     "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", 
-    "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC"
+    "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC",
+    "Work": "#4E79A7", "Meal Prep/clean": "#E15759", "Meal Time": "#F28E2B",
+    "Maintenance": "#76A04F", "Read/Reflect": "#EDC948", "Nap/Relax": "#B07AA1",
+    "Friend Time": "#FF9DA7", "Entertainment": "#9C755F", "Hobby": "#BAB0AC"
 }
 
 activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Nap/Relax", "Friend Time", "Entertainment", "Work-Calls", "Hobby", "Driving"]
@@ -70,7 +73,7 @@ if btn_col2.button("Clear List"):
     except Exception as e:
         st.error(f"Error clearing temporary storage: {e}")
 
-# --- DISPLAY CURRENT CLOUD PENDING LIST ---
+# Display Current Pending List
 try:
     client = get_gspread_client()
     temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
@@ -85,7 +88,7 @@ try:
 except:
     st.info("Cloud storage ready for your first activity.")
 
-# --- 4. MAIN FORM (RATINGS & EXERCISES) ---
+# --- 4. MAIN FORM ---
 with st.form("main_activity_form", clear_on_submit=True):
     date_val = st.date_input("Date", value=datetime.now())      
     
@@ -160,6 +163,7 @@ try:
         df = pd.DataFrame(all_values[1:], columns=all_values[0])
         df['Date'] = pd.to_datetime(df['Date'])
         
+        # Numeric cleanup
         for col in ['Ex1_Mins', 'Ex2_Mins', 'Satisfaction', 'Neuralgia']:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
@@ -168,40 +172,54 @@ try:
         df_filtered = df[df['Date'].dt.month_name() == selected_month].copy()
 
         if not df_filtered.empty:
-            st.write("### Exercise Minutes")
-            ex1_sub = df_filtered[['Date', 'Ex1_Type', 'Ex1_Mins']].rename(columns={'Ex1_Type': 'Type', 'Ex1_Mins': 'Mins'})
-            ex2_sub = df_filtered[['Date', 'Ex2_Type', 'Ex2_Mins']].rename(columns={'Ex2_Type': 'Type', 'Ex2_Mins': 'Mins'})
-            df_plot = pd.concat([ex1_sub, ex2_sub])
-            df_plot = df_plot[df_plot['Type'] != "None"]
-            
-            # FIXED SYNTAX ERROR HERE
-            exercise_chart = alt.Chart(df_plot).mark_bar().encode(
-                x='date(Date):O', 
-                y='sum(Mins):Q', 
-                color=alt.Color('Type:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values())))
-            ).properties(height=300)
-            st.altair_chart(exercise_chart, use_container_width=True)
-
-            st.write("### Satisfaction & Neuralgia Levels")
-            health_chart = alt.Chart(df_filtered).transform_fold(
-                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
-            ).mark_line(point=True).encode(
-                x='date(Date):O', 
-                y=alt.Y('Value:Q', scale=alt.Scale(domain=[1, 5])),
-                color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
-            ).properties(height=250)
-            st.altair_chart(health_chart, use_container_width=True)
-
-            st.write("### 📜 Past Activity Details")
+            # Re-shaping data for charts
             hist_list = []
             for i in range(1, 11):
                 temp = df_filtered[['Date', f'Act{i}_Type', f'Act{i}_Time', f'Act{i}_Text']].rename(
                     columns={f'Act{i}_Type': 'Activity', f'Act{i}_Time': 'Mins', f'Act{i}_Text': 'Notes'}
                 )
                 hist_list.append(temp)
-            df_hist = pd.concat(hist_list)
-            df_hist = df_hist[df_hist['Activity'] != "None"]
-            st.dataframe(df_hist.sort_values('Date', ascending=False), use_container_width=True)
+            df_long = pd.concat(hist_list)
+            df_long = df_long[df_long['Activity'] != "None"]
+            df_long['Mins'] = pd.to_numeric(df_long['Mins'], errors='coerce').fillna(0)
+
+            # CHART 1: Exercise Minutes
+            st.write("### Exercise Minutes")
+            ex1_sub = df_filtered[['Date', 'Ex1_Type', 'Ex1_Mins']].rename(columns={'Ex1_Type': 'Type', 'Ex1_Mins': 'Mins'})
+            ex2_sub = df_filtered[['Date', 'Ex2_Type', 'Ex2_Mins']].rename(columns={'Ex2_Type': 'Type', 'Ex2_Mins': 'Mins'})
+            df_ex_plot = pd.concat([ex1_sub, ex2_sub])
+            df_ex_plot = df_ex_plot[df_ex_plot['Type'] != "None"]
+            df_ex_plot['Mins'] = pd.to_numeric(df_ex_plot['Mins'], errors='coerce').fillna(0)
+
+            exercise_chart = alt.Chart(df_ex_plot).mark_bar().encode(
+                x='date(Date):O', y='sum(Mins):Q', 
+                color=alt.Color('Type:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values())))
+            ).properties(height=300)
+            st.altair_chart(exercise_chart, use_container_width=True)
+
+            # CHART 2: Daily Time Breakdown (THE FIXED STACKED BAR)
+            st.write("### Daily Time Breakdown")
+            breakdown_chart = alt.Chart(df_long).mark_bar(opacity=0.8).encode(
+                x=alt.X('date(Date):O', title=f'Day of {selected_month}'),
+                y=alt.Y('Mins:Q', aggregate='sum', title='Total Minutes'),
+                color=alt.Color('Activity:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values()))),
+                tooltip=['Date', 'Activity', 'Mins']
+            ).properties(height=300)
+            st.altair_chart(breakdown_chart, use_container_width=True)
+
+            # CHART 3: Health History
+            st.write("### Satisfaction & Neuralgia Levels")
+            health_chart = alt.Chart(df_filtered).transform_fold(
+                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
+            ).mark_line(point=True).encode(
+                x='date(Date):O', y=alt.Y('Value:Q', scale=alt.Scale(domain=[1, 5])),
+                color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
+            ).properties(height=250)
+            st.altair_chart(health_chart, use_container_width=True)
+
+            # Table for granular details
+            st.write("### 📜 Past Activity Details")
+            st.dataframe(df_long.sort_values('Date', ascending=False), use_container_width=True)
 
 except Exception as e:
-    st.info("Log your daily data to unlock historical charts and tables!")
+    st.info("Log your daily data to unlock historical charts!")
