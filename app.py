@@ -119,7 +119,6 @@ if submit:
     est = pytz.timezone('US/Eastern')
     timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
 
-    # Fetch temp data for final construction
     client = get_gspread_client()
     temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
     temp_rows = temp_sheet.get_all_values()[1:] 
@@ -133,7 +132,6 @@ if submit:
         insights
     ]
 
-    # Map exactly 10 activities
     final_activities = []
     for i in range(10):
         if i < len(temp_rows):
@@ -146,11 +144,10 @@ if submit:
     new_entry.append(timestamp_est)
 
     log_activity_data(new_entry)
-    # Wipe temp tab only after successful main save
     temp_sheet.batch_clear(['A2:C100'])
     st.rerun()
 
-# --- 6. VISUAL ANALYSIS (HISTORICAL) ---
+# --- 6. VISUAL ANALYSIS ---
 st.divider()
 st.subheader("Visual Analysis")
 
@@ -163,7 +160,6 @@ try:
         df = pd.DataFrame(all_values[1:], columns=all_values[0])
         df['Date'] = pd.to_datetime(df['Date'])
         
-        # Numeric cleanup
         for col in ['Ex1_Mins', 'Ex2_Mins', 'Satisfaction', 'Neuralgia']:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
@@ -178,8 +174,34 @@ try:
             df_plot = pd.concat([ex1_sub, ex2_sub])
             df_plot = df_plot[df_plot['Type'] != "None"]
             
-            # Apply fixed colors
+            # FIXED SYNTAX ERROR HERE
             exercise_chart = alt.Chart(df_plot).mark_bar().encode(
                 x='date(Date):O', 
                 y='sum(Mins):Q', 
-                color=alt.Color('Type:N',
+                color=alt.Color('Type:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values())))
+            ).properties(height=300)
+            st.altair_chart(exercise_chart, use_container_width=True)
+
+            st.write("### Satisfaction & Neuralgia Levels")
+            health_chart = alt.Chart(df_filtered).transform_fold(
+                ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
+            ).mark_line(point=True).encode(
+                x='date(Date):O', 
+                y=alt.Y('Value:Q', scale=alt.Scale(domain=[1, 5])),
+                color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
+            ).properties(height=250)
+            st.altair_chart(health_chart, use_container_width=True)
+
+            st.write("### 📜 Past Activity Details")
+            hist_list = []
+            for i in range(1, 11):
+                temp = df_filtered[['Date', f'Act{i}_Type', f'Act{i}_Time', f'Act{i}_Text']].rename(
+                    columns={f'Act{i}_Type': 'Activity', f'Act{i}_Time': 'Mins', f'Act{i}_Text': 'Notes'}
+                )
+                hist_list.append(temp)
+            df_hist = pd.concat(hist_list)
+            df_hist = df_hist[df_hist['Activity'] != "None"]
+            st.dataframe(df_hist.sort_values('Date', ascending=False), use_container_width=True)
+
+except Exception as e:
+    st.info("Log your daily data to unlock historical charts and tables!")
