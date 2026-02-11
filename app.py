@@ -20,7 +20,7 @@ def add_to_temp_storage(activity, duration, notes):
         temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
         temp_sheet.append_row([activity, duration, notes])
     except Exception as e:
-        st.error("Error saving to temporary storage.")
+        st.error(f"Error saving to temporary storage: {e}")
 
 def log_activity_data(entry_data):
     """Saves the final combined daily entry to the main sheet."""
@@ -31,7 +31,7 @@ def log_activity_data(entry_data):
         sheet.append_row(entry_data)
         st.success(f"Successfully saved entry for {entry_data[0]}!")
     except Exception as e:
-        st.error("Google Sheets Connection Error")
+        st.error(f"Google Sheets Connection Error: {e}")
 
 # --- 3. STREAMLIT UI ---
 st.title("☀️ Daily Activity Log")
@@ -61,19 +61,26 @@ if btn_col2.button("Clear List"):
         temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
         temp_sheet.batch_clear(['A2:C100'])
         st.rerun()
-    except:
-        st.error("Error clearing temporary storage.")
+    except Exception as e:
+        st.error(f"Error clearing temporary storage: {e}")
 
-# Display Pending Activities
+# --- DISPLAY PENDING ACTIVITIES (The Missing Table) ---
+st.write("---")
 try:
     client = get_gspread_client()
     temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
-    temp_data = temp_sheet.get_all_records()
-    if temp_data:
-        st.write("### Pending Activities (Saved in Cloud)")
-        st.table(temp_data)
-except:
-    st.info("No pending activities found in cloud storage.")
+    # Using get_all_values to be more resilient than get_all_records
+    temp_rows = temp_sheet.get_all_values()
+    
+    if len(temp_rows) > 1:
+        st.write("### 📝 Pending Activities (Stored in Cloud)")
+        # Convert to DataFrame for a nice, clean display
+        pending_df = pd.DataFrame(temp_rows[1:], columns=temp_rows[0])
+        st.dataframe(pending_df, use_container_width=True)
+    else:
+        st.info("No pending activities. Add one above to get started!")
+except Exception as e:
+    st.info("Add an activity to initialize the cloud list.")
 
 # --- MAIN FORM ---
 with st.form("main_activity_form", clear_on_submit=True):
@@ -88,7 +95,6 @@ with st.form("main_activity_form", clear_on_submit=True):
     ex_col1, ex_col2 = st.columns(2)
     with ex_col1:
         st.subheader("Exercise 1")
-        # Unique key added to prevent DuplicateElementId error
         ex1_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex1_sel")
         m1_col1, m1_col2 = st.columns(2)
         ex1_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_m")
@@ -96,7 +102,6 @@ with st.form("main_activity_form", clear_on_submit=True):
 
     with ex_col2:
         st.subheader("Exercise 2")
-        # Unique key added here as well
         ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex2_sel")
         m2_col1, m2_col2 = st.columns(2)
         ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_m")
@@ -132,6 +137,7 @@ if submit:
     for i in range(10):
         if i < len(temp_rows):
             row = temp_rows[i]
+            # Ensure we have 3 elements per activity slot
             final_activities.extend([row[0], row[1], row[2]])
         else:
             final_activities.extend(["None", 0, ""])
@@ -140,6 +146,7 @@ if submit:
     new_entry.append(timestamp_est)
 
     log_activity_data(new_entry)
+    # Clear temp storage after final save
     temp_sheet.batch_clear(['A2:C100'])
     st.rerun()
 
@@ -156,7 +163,6 @@ try:
         df = pd.DataFrame(all_values[1:], columns=all_values[0])
         df['Date'] = pd.to_datetime(df['Date'])
         
-        # Numeric conversion for charts
         for col in ['Ex1_Mins', 'Ex2_Mins', 'Satisfaction', 'Neuralgia']:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
@@ -165,19 +171,18 @@ try:
         df_filtered = df[df['Date'].dt.month_name() == selected_month].copy()
 
         if not df_filtered.empty:
-            # Exercise Chart
+            st.write("### Exercise Minutes")
             ex1 = df_filtered[['Date', 'Ex1_Type', 'Ex1_Mins']].rename(columns={'Ex1_Type': 'Type', 'Ex1_Mins': 'Mins'})
             ex2 = df_filtered[['Date', 'Ex2_Type', 'Ex2_Mins']].rename(columns={'Ex2_Type': 'Type', 'Ex2_Mins': 'Mins'})
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
+            
+            if not df_plot.empty:
+                exercise_chart = alt.Chart(df_plot).mark_bar().encode(
+                    x='date(Date):O', y='sum(Mins):Q', color='Type:N'
+                ).properties(height=300)
+                st.altair_chart(exercise_chart, use_container_width=True)
 
-            st.write("### Exercise Minutes")
-            exercise_chart = alt.Chart(df_plot).mark_bar().encode(
-                x='date(Date):O', y='sum(Mins):Q', color='Type:N'
-            ).properties(height=300)
-            st.altair_chart(exercise_chart, use_container_width=True)
-
-            # Health Levels
             st.write("### Satisfaction & Neuralgia Levels")
             health_chart = alt.Chart(df_filtered).transform_fold(
                 ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
@@ -188,7 +193,5 @@ try:
             
             with st.expander("View Data Table"):
                 st.dataframe(df_filtered.sort_values('Date', ascending=False))
-        else:
-            st.info(f"No data for {selected_month}.")
 except Exception as e:
-    st.error("Charts could not be loaded.")
+    st.info("Log your first entry to generate charts!")
