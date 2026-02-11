@@ -221,10 +221,6 @@ try:
                 color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B']))
             ).properties(height=250)
             st.altair_chart(health_chart, use_container_width=True)
-
-            # Table for granular details
-            st.write("### 📜 Past Activity Details")
-            st.dataframe(df_long.sort_values('Date', ascending=False), use_container_width=True)
-
+           
 except Exception as e:
     st.info("Log your daily data to unlock historical charts!")
