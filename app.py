@@ -39,13 +39,18 @@ st.title("☀️ Daily Activity Log")
 st.divider()
 st.subheader("⏰ Daily Time Tracking")
 
-# Fixed Color Palette for Consistency across all charts
-activity_colors = {
+# Fixed Colors for Exercise Chart only
+exercise_colors = {
     "Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", 
-    "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC",
+    "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC"
+}
+
+# Fixed Colors for Activity Chart only
+daily_activity_colors = {
     "Work": "#4E79A7", "Meal Prep/clean": "#E15759", "Meal Time": "#F28E2B",
     "Maintenance": "#76A04F", "Read/Reflect": "#EDC948", "Nap/Relax": "#B07AA1",
-    "Friend Time": "#FF9DA7", "Entertainment": "#9C755F", "Hobby": "#BAB0AC"
+    "Friend Time": "#FF9DA7", "Entertainment": "#9C755F", "Work-Calls": "#4E79A7", 
+    "Hobby": "#BAB0AC", "Driving": "#72B7B2"
 }
 
 activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Nap/Relax", "Friend Time", "Entertainment", "Work-Calls", "Hobby", "Driving"]
@@ -193,7 +198,7 @@ try:
 
             exercise_chart = alt.Chart(df_ex_plot).mark_bar().encode(
                 x='date(Date):O', y='sum(Mins):Q', 
-                color=alt.Color('Type:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values())))
+                color=alt.Color('Type:N', scale=alt.Scale(domain=list(exercise_colors.keys()), range=list(exercise_colors.values())))
             ).properties(height=300)
             st.altair_chart(exercise_chart, use_container_width=True)
 
@@ -202,7 +207,7 @@ try:
             breakdown_chart = alt.Chart(df_long).mark_bar(opacity=0.8).encode(
                 x=alt.X('date(Date):O', title=f'Day of {selected_month}'),
                 y=alt.Y('Mins:Q', aggregate='sum', title='Total Minutes'),
-                color=alt.Color('Activity:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values()))),
+                color=alt.Color('Activity:N', scale=alt.Scale(domain=list(daily_activity_colors.keys()), range=list(daily_activity_colors.values()))),
                 tooltip=['Date', 'Activity', 'Mins']
             ).properties(height=300)
             st.altair_chart(breakdown_chart, use_container_width=True)
