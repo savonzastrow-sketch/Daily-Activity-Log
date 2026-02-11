@@ -21,33 +21,30 @@ def add_to_temp_storage(activity, duration, notes):
         temp_sheet.append_row([activity, duration, notes])
     except Exception as e:
         st.error("Error saving to temporary storage.")
-        st.exception(e)
 
 def log_activity_data(entry_data):
     """Saves the final combined daily entry to the main sheet."""
     try:
         client = get_gspread_client()
-        sheet_name = "Daily Activity Log" 
-        spreadsheet = client.open(sheet_name)
+        spreadsheet = client.open("Daily Activity Log")
         sheet = spreadsheet.sheet1
         sheet.append_row(entry_data)
         st.success(f"Successfully saved entry for {entry_data[0]}!")
     except Exception as e:
         st.error("Google Sheets Connection Error")
-        st.exception(e)
 
-# --- 3. STREAMLIT UI - INPUT TEMPLATE ---
+# --- 3. STREAMLIT UI ---
 st.title("☀️ Daily Activity Log")
 
 st.divider()
 st.subheader("⏰ Daily Time Tracking")
 
-activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Nap/Relax", "Freind Time", "Entertainment", "Work-Calls", "Hobby", "Driving"]
+activity_options = ["None", "Work", "Meal Prep/clean", "Meal Time", "Maintenance", "Exercise", "Read/Reflect", "Nap/Relax", "Friend Time", "Entertainment", "Work-Calls", "Hobby", "Driving"]
 
 cols = st.columns([1.5, 1, 3.5])
-act_type = cols[0].selectbox("Activity Type", activity_options, key="current_act")
-act_mins = cols[1].number_input("Mins", min_value=0, step=5, key="current_mins")
-act_text = cols[2].text_input("Notes/Details", key="current_notes")
+act_type = cols[0].selectbox("Activity Type", activity_options, key="ui_act_type")
+act_mins = cols[1].number_input("Mins", min_value=0, step=5, key="ui_act_mins")
+act_text = cols[2].text_input("Notes/Details", key="ui_act_notes")
 
 btn_col1, btn_col2 = st.columns(2)
 
@@ -62,26 +59,24 @@ if btn_col2.button("Clear List"):
     try:
         client = get_gspread_client()
         temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
-        # Clear data from A2 down (preserving headers)
         temp_sheet.batch_clear(['A2:C100'])
         st.rerun()
-    except Exception as e:
+    except:
         st.error("Error clearing temporary storage.")
 
-# Display Pending Activities from Google Sheets
+# Display Pending Activities
 try:
     client = get_gspread_client()
     temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
     temp_data = temp_sheet.get_all_records()
-    
     if temp_data:
         st.write("### Pending Activities (Saved in Cloud)")
         st.table(temp_data)
 except:
     st.info("No pending activities found in cloud storage.")
 
-# Main Form for Ratings, Exercises, and final Save
-with st.form("activity_form", clear_on_submit=True):
+# --- MAIN FORM ---
+with st.form("main_activity_form", clear_on_submit=True):
     date_val = st.date_input("Date", value=datetime.now())      
     
     st.subheader("Daily Ratings")
@@ -93,54 +88,50 @@ with st.form("activity_form", clear_on_submit=True):
     ex_col1, ex_col2 = st.columns(2)
     with ex_col1:
         st.subheader("Exercise 1")
-        ex_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"])
+        # Unique key added to prevent DuplicateElementId error
+        ex1_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex1_sel")
         m1_col1, m1_col2 = st.columns(2)
-        ex_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0)
-        ex_miles = m1_col2.number_input("Miles", min_value=0.0, step=0.1)
+        ex1_mins = m1_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex1_m")
+        ex1_miles = m1_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex1_mi")
 
     with ex_col2:
         st.subheader("Exercise 2")
-        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"])
+        # Unique key added here as well
+        ex2_type = st.selectbox("Type", ["None", "Swim", "Run", "Cycle", "Yoga", "Elliptical", "Strength", "Other"], key="ex2_sel")
         m2_col1, m2_col2 = st.columns(2)
-        ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0)
-        ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1)
+        ex2_mins = m2_col1.number_input("Minutes", min_value=0.0, step=5.0, key="ex2_m")
+        ex2_miles = m2_col2.number_input("Miles", min_value=0.0, step=0.1, key="ex2_mi")
     
-    insights = st.text_area("Daily Insights & Health Notes")
+    insights = st.text_area("Daily Insights & Health Notes", key="main_insights")
     
     submit = st.form_submit_button("Save to Google Sheet")
 
 # --- 4. LOGIC AFTER SUBMIT ---
 if submit:
-    # 1. Setup metadata
     est = pytz.timezone('US/Eastern')
     timestamp_est = datetime.now(est).strftime("%Y-%m-%d %H:%M:%S")
 
-    # 2. Pull activities from Temp tab
     client = get_gspread_client()
     temp_sheet = client.open("Daily Activity Log").worksheet("Temp_Activities")
-    # Get all rows, skip header
     temp_rows = temp_sheet.get_all_values()[1:] 
 
-    # 3. Build main entry list
     new_entry = [
         date_val.strftime("%Y-%m-%d"),
         satisfaction,
         neuralgia,
-        ex_type,
-        ex_mins,
-        ex_miles,
+        ex1_type,
+        ex1_mins,
+        ex1_miles,
         ex2_type,
         ex2_mins,
         ex2_miles,
         insights
     ]
 
-    # 4. Map the first 10 activities to the columns
     final_activities = []
     for i in range(10):
         if i < len(temp_rows):
             row = temp_rows[i]
-            # row[0]=Activity, row[1]=Mins, row[2]=Notes
             final_activities.extend([row[0], row[1], row[2]])
         else:
             final_activities.extend(["None", 0, ""])
@@ -148,22 +139,13 @@ if submit:
     new_entry.extend(final_activities)
     new_entry.append(timestamp_est)
 
-    # 5. Save to Main Sheet
     log_activity_data(new_entry)
-    
-    # 6. Clear the Temp tab for a fresh start tomorrow
     temp_sheet.batch_clear(['A2:C100'])
     st.rerun()
 
 # --- 5. VISUAL ANALYSIS ---
-# (Keep your existing visual analysis code here exactly as it was)
 st.divider()
 st.subheader("Visual Analysis")
-
-months = ["January", "February", "March", "April", "May", "June", 
-          "July", "August", "September", "October", "November", "December"]
-current_month_idx = datetime.now().month - 1
-selected_month_name = st.selectbox("Select Month to Review", months, index=current_month_idx)
 
 try:
     client = get_gspread_client()
@@ -174,69 +156,39 @@ try:
         df = pd.DataFrame(all_values[1:], columns=all_values[0])
         df['Date'] = pd.to_datetime(df['Date'])
         
+        # Numeric conversion for charts
         for col in ['Ex1_Mins', 'Ex2_Mins', 'Satisfaction', 'Neuralgia']:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-        df_filtered = df[df['Date'].dt.month_name() == selected_month_name].copy()
+        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+        selected_month = st.selectbox("Select Month to Review", months, index=datetime.now().month - 1)
+        df_filtered = df[df['Date'].dt.month_name() == selected_month].copy()
 
-        if df_filtered.empty:
-            st.info(f"No data logged for {selected_month_name} yet.")
-        else:
+        if not df_filtered.empty:
             # Exercise Chart
             ex1 = df_filtered[['Date', 'Ex1_Type', 'Ex1_Mins']].rename(columns={'Ex1_Type': 'Type', 'Ex1_Mins': 'Mins'})
             ex2 = df_filtered[['Date', 'Ex2_Type', 'Ex2_Mins']].rename(columns={'Ex2_Type': 'Type', 'Ex2_Mins': 'Mins'})
             df_plot = pd.concat([ex1, ex2])
             df_plot = df_plot[df_plot['Type'] != "None"]
 
-            activity_colors = {"Swim": "#72B7B2", "Yoga": "#76A04F", "Run": "#E15759", "Cycle": "#4E79A7", "Elliptical": "#F28E2B", "Strength": "#636363", "Other": "#BAB0AC"}
-
             st.write("### Exercise Minutes")
-            exercise_chart = alt.Chart(df_plot).mark_bar(opacity=0.8).encode(
-                x=alt.X('date(Date):O', title=f'Day of {selected_month_name}'),
-                y=alt.Y('Mins:Q', aggregate='sum', title='Minutes'),
-                color=alt.Color('Type:N', scale=alt.Scale(domain=list(activity_colors.keys()), range=list(activity_colors.values()))),
-                tooltip=['Date', 'Type', 'Mins']
+            exercise_chart = alt.Chart(df_plot).mark_bar().encode(
+                x='date(Date):O', y='sum(Mins):Q', color='Type:N'
             ).properties(height=300)
             st.altair_chart(exercise_chart, use_container_width=True)
 
-            # Health Chart
+            # Health Levels
             st.write("### Satisfaction & Neuralgia Levels")
             health_chart = alt.Chart(df_filtered).transform_fold(
                 ['Satisfaction', 'Neuralgia'], as_=['Metric', 'Value']
             ).mark_line(point=True).encode(
-                x=alt.X('date(Date):O'),
-                y=alt.Y('Value:Q', scale=alt.Scale(domain=[1, 5])),
-                color=alt.Color('Metric:N', scale=alt.Scale(range=['#636EFA', '#EF553B'])),
-                tooltip=['Date', 'Metric:N', 'Value:Q']
+                x='date(Date):O', y='Value:Q', color='Metric:N'
             ).properties(height=250)
             st.altair_chart(health_chart, use_container_width=True)
-
-            # Daily Breakdown Chart
-            daily_act_list = []
-            for i in range(1, 11):
-                temp_df = df_filtered[['Date', f'Act{i}_Type', f'Act{i}_Time']].rename(
-                    columns={f'Act{i}_Type': 'Activity', f'Act{i}_Time': 'Mins'}
-                )
-                daily_act_list.append(temp_df)
             
-            df_daily_plot = pd.concat(daily_act_list)
-            df_daily_plot = df_daily_plot[df_daily_plot['Activity'] != "None"]
-            df_daily_plot['Mins'] = pd.to_numeric(df_daily_plot['Mins'], errors='coerce').fillna(0)
-
-            st.write("### Daily Time Breakdown")
-            breakdown_chart = alt.Chart(df_daily_plot).mark_bar().encode(
-                x=alt.X('date(Date):O'),
-                y=alt.Y('Mins:Q', aggregate='sum'),
-                color=alt.Color('Activity:N'),
-                tooltip=['Date', 'Activity:N', 'Mins:Q']
-            ).properties(height=300)
-            st.altair_chart(breakdown_chart, use_container_width=True)
-
-            with st.expander("View Monthly Data Table"):
+            with st.expander("View Data Table"):
                 st.dataframe(df_filtered.sort_values('Date', ascending=False))
-    else:
-        st.info("Log some data to see the chart!")
-
+        else:
+            st.info(f"No data for {selected_month}.")
 except Exception as e:
-    st.error("Error loading chart data.")
-    st.exception(e)
+    st.error("Charts could not be loaded.")
